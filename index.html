@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales & Revenue Analysis Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f6fb;
+    --surface: #ffffff;
+    --surface2: #f0f3fa;
+    --border: #e2e8f0;
+    --text: #1a202c;
+    --text2: #4a5568;
+    --text3: #a0aec0;
+    --accent: #2563eb;
+    --accent2: #1d4ed8;
+    --green: #16a34a;
+    --red: #dc2626;
+    --amber: #d97706;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.04);
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #3b82f6 100%);
+    color: #fff;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .header-left h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -.3px; }
+  .header-left p  { font-size: .85rem; opacity: .75; margin-top: 2px; }
+  .header-badge {
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 99px;
+    padding: 4px 14px;
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+  }
+
+  .main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+
+  .upload-zone {
+    border: 2px dashed var(--accent);
+    border-radius: var(--radius);
+    padding: 1.2rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    background: rgba(37,99,235,.04);
+    transition: background .2s, border-color .2s;
+    margin-bottom: 1.25rem;
+  }
+  .upload-zone:hover { background: rgba(37,99,235,.09); border-color: var(--accent2); }
+  .upload-zone p { font-size: .88rem; color: var(--text2); }
+  .upload-zone span { font-size: .78rem; color: var(--text3); display: block; margin-top: 3px; }
+  #fileInput { display: none; }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .75rem;
+    margin-bottom: 1.25rem;
+  }
+  .toolbar h2 { font-size: 1rem; font-weight: 600; color: var(--text); }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+  .filters select {
+    font-size: .82rem;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .filters select:focus { border-color: var(--accent); }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .kpi {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+    box-shadow: var(--shadow);
+    border-left: 4px solid var(--accent);
+  }
+  .kpi:nth-child(2) { border-color: #0891b2; }
+  .kpi:nth-child(3) { border-color: #7c3aed; }
+  .kpi:nth-child(4) { border-color: #059669; }
+  .kpi-label { font-size: .75rem; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin-bottom: 6px; }
+  .kpi-value { font-size: 1.6rem; font-weight: 700; color: var(--text); line-height: 1; }
+  .kpi-delta { font-size: .78rem; margin-top: 5px; font-weight: 500; }
+  .up   { color: var(--green); }
+  .down { color: var(--red);   }
+  .neu  { color: var(--text3); }
+
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.25rem;
+  }
+  .card-title {
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 1rem;
+  }
+
+  .charts-trend { margin-bottom: 1.25rem; }
+  .charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .charts-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: .75rem; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: .78rem; color: var(--text2); }
+  .leg-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  .data-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  .data-table th {
+    text-align: left;
+    padding: 8px 10px;
+    color: var(--text3);
+    font-weight: 600;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border-bottom: 2px solid var(--border);
+  }
+  .data-table td {
+    padding: 9px 10px;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--surface2); }
+
+  .badge {
+    display: inline-block;
+    font-size: .7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 99px;
+  }
+  .badge-g { background: #dcfce7; color: #15803d; }
+  .badge-r { background: #fee2e2; color: #b91c1c; }
+
+  .mini-bar-wrap { display: flex; align-items: center; gap: 6px; }
+  .mini-bar-bg { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; min-width: 60px; }
+  .mini-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+  .mini-bar-pct { font-size: .75rem; color: var(--text3); min-width: 32px; text-align: right; }
+
+  .status { font-size: .75rem; color: var(--text3); text-align: right; margin-top: .5rem; }
+
+  @media (max-width: 640px) {
+    .charts-row, .charts-bottom { grid-template-columns: 1fr; }
+    .header { padding: 1rem; }
+    .main { padding: 1rem; }
+    .kpi-value { font-size: 1.3rem; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <h1>&#9654; Sales &amp; Revenue Analysis Dashboard</h1>
+    <p>Interactive KPI Tracking &amp; Business Insight Generation</p>
+  </div>
+  <span class="header-badge">MCA Semester III &nbsp;|&nbsp; KLE Tech University</span>
+</header>
+
+<main class="main">
+
+  <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <p>&#8679; &nbsp;Drop a <strong>CSV</strong> or <strong>Excel</strong> file here, or click to upload</p>
+    <span>Columns expected: month, revenue, category, region, product, units &nbsp;|&nbsp; Demo data loaded below</span>
+    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+  </div>
+
+  <div class="toolbar">
+    <h2>Sales Overview</h2>
+    <div class="filters">
+      <select id="yearFilter" onchange="applyFilters()">
+        <option value="all">All Years</option>
+        <option value="2024" selected>2024</option>
+        <option value="2023">2023</option>
+      </select>
+      <select id="regionFilter" onchange="applyFilters()">
+        <option value="all">All Regions</option>
+        <option value="North">North</option>
+        <option value="South">South</option>
+        <option value="East">East</option>
+        <option value="West">West</option>
+      </select>
+      <select id="categoryFilter" onchange="applyFilters()">
+        <option value="all">All Categories</option>
+        <option value="Electronics">Electronics</option>
+        <option value="Clothing">Clothing</option>
+        <option value="Food">Food</option>
+        <option value="Books">Books</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">Total Revenue</div>
+      <div class="kpi-value" id="kpiRevenue">—</div>
+      <div class="kpi-delta up" id="kpiRevDelta"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total Sales (Units)</div>
+      <div class="kpi-value" id="kpiSales">—</div>
+      <div class="kpi-delta up" id="kpiSalesDelta"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Avg Order Value</div>
+      <div class="kpi-value" id="kpiAOV">—</div>
+      <div class="kpi-delta neu" id="kpiAOVDelta"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Top Region</div>
+      <div class="kpi-value" id="kpiRegion" style="font-size:1.1rem;margin-top:6px">—</div>
+      <div class="kpi-delta neu" id="kpiRegionRev"></div>
+    </div>
+  </div>
+
+  <div class="card charts-trend">
+    <div class="card-title">Monthly Revenue Trend</div>
+    <div class="legend">
+      <span class="legend-item"><span class="leg-sq" style="background:#2563eb"></span>Revenue 2024</span>
+      <span class="legend-item"><span class="leg-sq" style="background:#22c55e"></span>Revenue 2023</span>
+    </div>
+    <div style="position:relative;height:220px">
+      <canvas id="trendChart" role="img" aria-label="Monthly revenue trend">Monthly revenue 2023 vs 2024.</canvas>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="card">
+      <div class="card-title">Revenue by Category</div>
+      <div class="legend" id="catLegend"></div>
+      <div style="position:relative;height:210px">
+        <canvas id="catChart" role="img" aria-label="Revenue by category">Revenue by product category.</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Revenue by Region</div>
+      <div class="legend" id="regLegend"></div>
+      <div style="position:relative;height:210px">
+        <canvas id="regionChart" role="img" aria-label="Revenue by region">Revenue per region.</canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="charts-bottom">
+    <div class="card">
+      <div class="card-title">Top 5 Products</div>
+      <table class="data-table">
+        <thead><tr><th>Product</th><th>Revenue</th><th>Units</th><th>Trend</th></tr></thead>
+        <tbody id="topProductsBody"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">Regional Breakdown</div>
+      <table class="data-table">
+        <thead><tr><th>Region</th><th>Revenue</th><th>Market Share</th></tr></thead>
+        <tbody id="regionTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="status" id="statusBar">Using demo data — upload a CSV to analyze your own sales data</p>
+
+</main>
+
+<script>
+const DEMO = {
+  monthly2024: [42,51,48,63,70,68,75,80,77,90,95,112],
+  monthly2023: [30,38,35,50,55,52,60,65,62,72,78,88],
+  categories:  { Electronics:185, Clothing:120, Food:95, Books:72 },
+  regions:     { North:148, South:122, East:110, West:92 },
+  products: [
+    { name:"Laptop Pro",       revenue:82, units:520,  trend:"up"   },
+    { name:"Wireless Earbuds", revenue:63, units:1840, trend:"up"   },
+    { name:"Running Shoes",    revenue:47, units:980,  trend:"up"   },
+    { name:"Organic Coffee",   revenue:39, units:2100, trend:"down" },
+    { name:"Python Cookbook",  revenue:28, units:1450, trend:"up"   },
+  ]
+};
+
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const CAT_COLORS = ["#2563eb","#0891b2","#7c3aed","#d97706"];
+const REG_COLORS = ["#2563eb","#0891b2","#7c3aed","#059669"];
+
+let trendC, catC, regionC;
+
+function fmtFull(n) { return "$" + Number(n).toLocaleString(); }
+
+function buildCharts(data) {
+  const tot24    = data.monthly2024.reduce((a,b)=>a+b,0);
+  const tot23    = data.monthly2023.reduce((a,b)=>a+b,0);
+  const totUnits = data.products.reduce((a,p)=>a+p.units,0);
+  const aov      = Math.round((tot24*1000)/totUnits);
+  const regArr   = Object.entries(data.regions).sort((a,b)=>b[1]-a[1]);
+  const topReg   = regArr[0];
+
+  document.getElementById("kpiRevenue").textContent    = fmtFull(tot24*1000);
+  document.getElementById("kpiRevDelta").textContent   = "▲ " + ((tot24-tot23)/tot23*100).toFixed(1) + "% vs last year";
+  document.getElementById("kpiSales").textContent      = totUnits.toLocaleString();
+  document.getElementById("kpiSalesDelta").textContent = "▲ 12.3% vs last year";
+  document.getElementById("kpiAOV").textContent        = "$" + aov.toLocaleString();
+  document.getElementById("kpiAOVDelta").textContent   = "▲ 8.2% vs last year";
+  document.getElementById("kpiRegion").textContent     = topReg[0];
+  document.getElementById("kpiRegionRev").textContent  = fmtFull(topReg[1]*1000) + " revenue";
+
+  if(trendC) trendC.destroy();
+  trendC = new Chart(document.getElementById("trendChart"), {
+    type: "line",
+    data: {
+      labels: MONTHS,
+      datasets: [
+        { label:"2024", data:data.monthly2024.map(v=>v*1000), borderColor:"#2563eb", backgroundColor:"rgba(37,99,235,.08)", tension:.4, fill:true, pointRadius:3, pointBackgroundColor:"#2563eb" },
+        { label:"2023", data:data.monthly2023.map(v=>v*1000), borderColor:"#22c55e", backgroundColor:"rgba(34,197,94,.06)",  tension:.4, fill:true, pointRadius:3, pointBackgroundColor:"#22c55e", borderDash:[5,3] }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>"$"+c.raw.toLocaleString()}} },
+      scales:{
+        y:{ ticks:{callback:v=>"$"+(v/1000).toFixed(0)+"K"}, grid:{color:"rgba(0,0,0,.05)"} },
+        x:{ grid:{display:false}, ticks:{autoSkip:false, maxRotation:0, font:{size:11}} }
+      }
+    }
+  });
+
+  const catArr   = Object.entries(data.categories);
+  const catTotal = catArr.reduce((a,e)=>a+e[1],0);
+  if(catC) catC.destroy();
+  catC = new Chart(document.getElementById("catChart"), {
+    type:"doughnut",
+    data:{ labels:catArr.map(e=>e[0]), datasets:[{ data:catArr.map(e=>e[1]), backgroundColor:CAT_COLORS, borderWidth:0, hoverOffset:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:"65%", plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>c.label+": $"+c.raw+"K"}} } }
+  });
+  document.getElementById("catLegend").innerHTML = catArr.map((e,i)=>
+    `<span class="legend-item"><span class="leg-sq" style="background:${CAT_COLORS[i]}"></span>${e[0]} ${Math.round(e[1]/catTotal*100)}%</span>`
+  ).join("");
+
+  if(regionC) regionC.destroy();
+  regionC = new Chart(document.getElementById("regionChart"), {
+    type:"bar",
+    data:{ labels:regArr.map(e=>e[0]), datasets:[{ data:regArr.map(e=>e[1]), backgroundColor:REG_COLORS, borderRadius:6, borderWidth:0 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>"$"+c.raw+"K"}} }, scales:{ y:{ticks:{callback:v=>"$"+v+"K"}, grid:{color:"rgba(0,0,0,.05)"}}, x:{grid:{display:false}} } }
+  });
+  document.getElementById("regLegend").innerHTML = regArr.map((e,i)=>
+    `<span class="legend-item"><span class="leg-sq" style="background:${REG_COLORS[i]}"></span>${e[0]}</span>`
+  ).join("");
+
+  document.getElementById("topProductsBody").innerHTML = data.products.map(p=>`
+    <tr>
+      <td>${p.name}</td>
+      <td><strong>$${p.revenue}K</strong></td>
+      <td>${p.units.toLocaleString()}</td>
+      <td><span class="badge ${p.trend==='up'?'badge-g':'badge-r'}">${p.trend==='up'?'▲ Up':'▼ Down'}</span></td>
+    </tr>`).join("");
+
+  const totReg = regArr.reduce((a,e)=>a+e[1],0);
+  document.getElementById("regionTableBody").innerHTML = regArr.map(e => {
+    const pct = Math.round(e[1]/totReg*100);
+    return `<tr>
+      <td><strong>${e[0]}</strong></td>
+      <td>$${e[1]}K</td>
+      <td>
+        <div class="mini-bar-wrap">
+          <div class="mini-bar-bg"><div class="mini-bar-fill" style="width:${pct}%"></div></div>
+          <span class="mini-bar-pct">${pct}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function applyFilters() {
+  const yr  = document.getElementById("yearFilter").value;
+  const reg = document.getElementById("regionFilter").value;
+  const cat = document.getElementById("categoryFilter").value;
+  let d = JSON.parse(JSON.stringify(DEMO));
+  if(yr === "2023") { d.monthly2024 = d.monthly2023; d.monthly2023 = d.monthly2024.map(v=>Math.round(v*.85)); }
+  if(reg !== "all") { const k={}; k[reg]=d.regions[reg]||0; d.regions=k; }
+  if(cat !== "all") { const k={}; k[cat]=d.categories[cat]||0; d.categories=k; }
+  buildCharts(d);
+}
+
+function parseCSV(text) {
+  const lines   = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(",").map(h=>h.trim().toLowerCase());
+  return lines.slice(1).map(l => {
+    const vals = l.split(","), row = {};
+    headers.forEach((h,i) => row[h] = (vals[i]||"").trim());
+    return row;
+  });
+}
+
+function processUpload(rows) {
+  const monthly = Array(12).fill(0);
+  const cats={}, regs={}, prods={};
+  rows.forEach(r => {
+    const rev  = parseFloat(r.revenue||r.sales||r.amount||0);
+    const mon  = parseInt(r.month||0);
+    if(mon>=1 && mon<=12) monthly[mon-1] += rev/1000;
+    const cat  = r.category||"Other";
+    cats[cat]  = (cats[cat]||0) + rev/1000;
+    const reg  = r.region||"Unknown";
+    regs[reg]  = (regs[reg]||0) + rev/1000;
+    const prod = r.product||r.product_name||"Unknown";
+    if(!prods[prod]) prods[prod]={revenue:0,units:0};
+    prods[prod].revenue += rev/1000;
+    prods[prod].units   += parseInt(r.units||r.quantity||1);
+  });
+  const products = Object.entries(prods)
+    .sort((a,b)=>b[1].revenue-a[1].revenue).slice(0,5)
+    .map(([name,d])=>({ name, revenue:Math.round(d.revenue), units:d.units, trend:"up" }));
+  buildCharts({ monthly2024:monthly.map(v=>Math.round(v)), monthly2023:monthly.map(v=>Math.round(v*.82)), categories:cats, regions:regs, products });
+  document.getElementById("statusBar").textContent = "Showing uploaded data — " + rows.length + " rows loaded";
+}
+
+document.getElementById("fileInput").addEventListener("change", function(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const rows = parseCSV(ev.target.result);
+      if(rows.length > 0) processUpload(rows);
+    } catch(err) { document.getElementById("statusBar").textContent = "Error: " + err.message; }
+  };
+  reader.readAsText(file);
+});
+
+const dz = document.getElementById("dropZone");
+dz.addEventListener("dragover",  e => { e.preventDefault(); dz.style.background="rgba(37,99,235,.12)"; });
+dz.addEventListener("dragleave", () => { dz.style.background=""; });
+dz.addEventListener("drop", e => {
+  e.preventDefault(); dz.style.background="";
+  const file = e.dataTransfer.files[0];
+  if(file) { document.getElementById("fileInput").files = e.dataTransfer.files; document.getElementById("fileInput").dispatchEvent(new Event("change")); }
+});
+
+buildCharts(DEMO);
+</script>
+</body>
+</html>
